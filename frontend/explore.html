@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BiliDown - 浏览视频</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body id="explore-page">
+    <header>
+        <div class="header-title">
+            <a id="back-home-link" href="index.html" style="color: inherit; text-decoration: none;">&larr; 返回主页</a>
+        </div>
+    </header>
+
+    <main>
+        <div class="control-bar">
+            <div class="input-group">
+                <input type="text" id="explore-uid" placeholder="输入UP主的UID查询...">
+                <button class="btn btn-primary" id="btn-explore-query">查询</button>
+            </div>
+        </div>
+
+        <div id="up-profile-container">
+            <!-- Profile injected here -->
+        </div>
+
+        <div id="explore-video-grid" class="video-grid">
+            <!-- Videos injected here -->
+        </div>
+        
+        <div class="pagination" id="explore-pagination" style="display: none;">
+            <button class="btn btn-secondary" id="btn-explore-prev">上一页</button>
+            <span id="explore-page-info">第 1 页</span>
+            <button class="btn btn-secondary" id="btn-explore-next">下一页</button>
+        </div>
+    </main>
+
+    <div id="toast-container"></div>
+    <script src="app.js"></script>
+</body>
+</html>

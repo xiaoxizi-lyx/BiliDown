@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BiliDown</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div class="header-title">
+            <span>BiliDown</span>
+            <span id="status-indicator" class="status-dot" title="Poller Status"></span>
+        </div>
+        <nav class="tabs">
+            <button class="tab-btn active" data-target="tab-library">视频库</button>
+            <button class="tab-btn" data-target="tab-uploaders">UP主管理</button>
+            <button class="tab-btn" data-target="tab-status">系统状态</button>
+        </nav>
+    </header>
+
+    <main>
+        <!-- 视频库 -->
+        <div id="tab-library" class="tab-content active">
+            <div class="control-bar">
+                <select id="filter-source">
+                    <option value="">所有来源</option>
+                    <option value="auto">自动追更</option>
+                    <option value="manual">手动下载</option>
+                </select>
+                <div class="input-group">
+                    <input type="text" id="search-input" placeholder="搜索标题或BV号...">
+                    <button class="btn btn-primary" id="btn-search">搜索</button>
+                </div>
+            </div>
+            
+            <div id="video-grid" class="video-grid">
+                <!-- Videos will be injected here -->
+            </div>
+            
+            <div class="pagination">
+                <button class="btn btn-secondary" id="btn-prev-page">上一页</button>
+                <span id="page-info">第 1 页</span>
+                <button class="btn btn-secondary" id="btn-next-page">下一页</button>
+            </div>
+        </div>
+
+        <!-- UP主管理 -->
+        <div id="tab-uploaders" class="tab-content">
+            <div class="control-bar">
+                <div class="input-group">
+                    <input type="text" id="input-uid" placeholder="输入UP主的UID...">
+                    <button class="btn btn-primary" id="btn-add-uploader">添加追踪</button>
+                </div>
+            </div>
+            
+            <div id="uploader-list" class="list-container">
+                <!-- Uploaders will be injected here -->
+            </div>
+        </div>
+
+        <!-- 系统状态 -->
+        <div id="tab-status" class="tab-content">
+            <div class="status-grid">
+                <div class="status-card">
+                    <h3>后台服务状态</h3>
+                    <div class="status-value" id="stat-poller">检查中...</div>
+                    <div style="margin-top: 0.5rem; color: var(--text-muted);" id="stat-interval">轮询间隔: --</div>
+                </div>
+                
+                <div class="status-card">
+                    <h3>磁盘空间</h3>
+                    <div class="status-value" id="stat-disk-used">-- / --</div>
+                    <div class="progress-container">
+                        <div class="progress-bar" id="stat-disk-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div class="status-card">
+                    <h3>下载队列</h3>
+                    <div class="status-value" id="stat-queue">0</div>
+                </div>
+                
+                <div class="status-card">
+                    <h3>已下载视频数</h3>
+                    <div class="status-value" id="stat-videos">0</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast-container"></div>
+    <script src="app.js"></script>
+</body>
+</html>

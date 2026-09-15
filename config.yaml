@@ -1,0 +1,24 @@
+# === 安全 ===
+secret_path: ""     # 首次运行若为空则自动生成
+
+# === HTTPS (Cloudflare 源证书) ===
+tls_cert: "./certs/origin.pem"
+tls_key: "./certs/origin-key.pem"
+port: 8443
+
+# === B 站 ===
+cookies_file: "./cookies.txt"
+
+# === 下载 ===
+download_dir: "./data/videos"
+preferred_quality: 2160           # 4K
+max_concurrent_downloads: 2
+
+# === 轮询 ===
+poll_interval_minutes: 5
+
+# === 追踪列表（也可在 Web 界面管理）===
+tracked_uploaders: []
+
+# === 磁盘管理 ===
+disk_reserve_mb: 500              # 始终保留的空闲空间
