@@ -1,3 +1,4 @@
+import os
 import aiosqlite
 import logging
 from datetime import datetime
@@ -8,8 +9,10 @@ log = logging.getLogger('bilidown')
 class Database:
     def __init__(self, db_path: str = "./data/bilidown.db"):
         self.db_path = db_path
+        os.makedirs(os.path.dirname(os.path.abspath(self.db_path)), exist_ok=True)
 
     async def init(self):
+        os.makedirs(os.path.dirname(os.path.abspath(self.db_path)), exist_ok=True)
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute('''
                 CREATE TABLE IF NOT EXISTS uploaders (

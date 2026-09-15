@@ -30,6 +30,10 @@ async def lifespan(app: FastAPI):
     # Startup
     log.info("Starting BiliDown backend...")
     
+    # Ensure data and download directories exist
+    os.makedirs("./data", exist_ok=True)
+    os.makedirs(config.download_dir, exist_ok=True)
+    
     # Initialize DB
     await db.init()
     

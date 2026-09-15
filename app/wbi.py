@@ -6,7 +6,17 @@ from functools import reduce
 from typing import Dict, Any, Tuple
 import logging
 
+from app.cookie_helper import get_cookie_dict
+
 log = logging.getLogger("bilidown.wbi")
+
+def get_bili_client(cookies_file: str = "cookies.txt") -> httpx.AsyncClient:
+    cookies = get_cookie_dict(cookies_file)
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Referer": "https://www.bilibili.com",
+    }
+    return httpx.AsyncClient(headers=headers, cookies=cookies, timeout=15.0)
 
 MIXIN_KEY_ENC_TAB = [
     46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49,
@@ -67,8 +77,8 @@ async def get_wbi_keys(client: httpx.AsyncClient) -> Tuple[str, str]:
     
     return img_key, sub_key
 
-async def fetch_creator_videos(mid: int, page: int = 1, page_size: int = 30) -> Dict[str, Any]:
-    async with httpx.AsyncClient(headers={"User-Agent": "Mozilla/5.0"}) as client:
+async def fetch_creator_videos(mid: int, page: int = 1, page_size: int = 30, cookies_file: str = "cookies.txt") -> Dict[str, Any]:
+    async with get_bili_client(cookies_file) as client:
         img_key, sub_key = await get_wbi_keys(client)
         
         params = {
@@ -83,7 +93,11 @@ async def fetch_creator_videos(mid: int, page: int = 1, page_size: int = 30) -> 
         
         signed_params = enc_wbi(params, img_key, sub_key)
         
-        resp = await client.get('https://api.bilibili.com/x/space/wbi/arc/search', params=signed_params)
+        resp = await client.get(
+            'https://api.bilibili.com/x/space/wbi/arc/search',
+            params=signed_params,
+            headers={"Referer": f"https://space.bilibili.com/{mid}/video"}
+        )
         resp.raise_for_status()
         
         data = resp.json()
@@ -93,9 +107,13 @@ async def fetch_creator_videos(mid: int, page: int = 1, page_size: int = 30) -> 
             
         return data["data"]
 
-async def get_uploader_info(mid: int) -> Dict[str, Any]:
-    async with httpx.AsyncClient(headers={"User-Agent": "Mozilla/5.0"}) as client:
-        resp = await client.get('https://api.bilibili.com/x/space/acc/info', params={"mid": mid})
+async def get_uploader_info(mid: int, cookies_file: str = "cookies.txt") -> Dict[str, Any]:
+    async with get_bili_client(cookies_file) as client:
+        resp = await client.get(
+            'https://api.bilibili.com/x/space/acc/info',
+            params={"mid": mid},
+            headers={"Referer": f"https://space.bilibili.com/{mid}"}
+        )
         resp.raise_for_status()
         
         data = resp.json()

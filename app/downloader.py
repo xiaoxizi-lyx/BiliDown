@@ -4,12 +4,14 @@ import os
 import logging
 from typing import Dict, Any, Optional
 from app.disk import ensure_disk_space
+from app.cookie_helper import get_netscape_cookie_path
 
 log = logging.getLogger("bilidown.downloader")
 
 def _extract_info(url: str, cookies_file: str) -> Dict[str, Any]:
+    cookiefile = get_netscape_cookie_path(cookies_file)
     opts = {
-        "cookiefile": cookies_file,
+        "cookiefile": cookiefile,
         "quiet": True,
         "no_warnings": True
     }
@@ -21,12 +23,13 @@ async def extract_video_info(url: str, cookies_file: str) -> Dict[str, Any]:
 
 def _download(url: str, config, progress_callback=None) -> Dict[str, Any]:
     quality = f"bestvideo[height<={config.preferred_quality}]+bestaudio/best"
+    cookiefile = get_netscape_cookie_path(config.cookies_file)
     
     opts = {
         "format": quality,
         "merge_output_format": "mp4",
         "outtmpl": f"{config.download_dir}/%(title)s_%(id)s.%(ext)s",
-        "cookiefile": config.cookies_file,
+        "cookiefile": cookiefile,
         "writethumbnail": True,
         "noplaylist": True,
         "postprocessor_args": {"merger": ["-movflags", "+faststart"]},

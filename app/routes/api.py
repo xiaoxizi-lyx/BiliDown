@@ -85,7 +85,8 @@ async def get_uploaders(request: Request):
 @router.post("/uploaders")
 async def add_uploader(request: Request, data: UploaderAddRequest):
     db = request.app.state.db
-    info = await get_uploader_info(data.mid)
+    config = request.app.state.config
+    info = await get_uploader_info(data.mid, cookies_file=config.cookies_file)
     
     if not info.get("name") or info.get("name").startswith("Unknown"):
         raise HTTPException(status_code=400, detail="无效的UP主UID")
@@ -108,13 +109,14 @@ async def remove_uploader(request: Request, mid: int):
 @router.get("/explore/{mid}")
 async def explore_uploader(request: Request, mid: int, pn: int = 1, ps: int = 20):
     db = request.app.state.db
+    config = request.app.state.config
     # Fetch video list from Bilibili API
-    data = await fetch_creator_videos(mid, pn, ps)
+    data = await fetch_creator_videos(mid, pn, ps, cookies_file=config.cookies_file)
     vlist = data.get("list", {}).get("vlist", [])
     page_info = data.get("page", {"pn": pn, "ps": ps, "count": 0})
     
     # Get uploader info
-    info = await get_uploader_info(mid)
+    info = await get_uploader_info(mid, cookies_file=config.cookies_file)
     
     # Check which videos are already downloaded
     for v in vlist:
@@ -138,7 +140,7 @@ async def manual_download(request: Request, data: DownloadRequest, background_ta
     # Check if uploader exists, if not add them untracked
     uploaders_res = await db.get_all_uploaders()
     if not any(u["mid"] == data.mid for u in uploaders_res):
-        info = await get_uploader_info(data.mid)
+        info = await get_uploader_info(data.mid, cookies_file=config.cookies_file)
         await db.add_uploader(
             mid=data.mid,
             name=info["name"],

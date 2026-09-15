@@ -50,7 +50,7 @@ class Poller:
             log.info(f"Checking updates for uploader {up['name']} (mid: {up['mid']})")
             
             try:
-                data = await fetch_creator_videos(up["mid"], page=1, page_size=20)
+                data = await fetch_creator_videos(up["mid"], page=1, page_size=20, cookies_file=self.config.cookies_file)
                 videos = data.get("list", {}).get("vlist", [])
                 
                 tracked_since_str = up["tracked_since"]
