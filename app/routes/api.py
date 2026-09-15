@@ -80,6 +80,42 @@ async def delete_video(request: Request, bvid: str):
             
     return {"success": True}
 
+@router.post("/videos/{bvid}/redownload")
+async def redownload_video(request: Request, bvid: str, background_tasks: BackgroundTasks):
+    db = request.app.state.db
+    config = request.app.state.config
+    import os
+
+    video = await db.get_video(bvid)
+    if not video:
+        raise HTTPException(status_code=404, detail="视频不存在")
+
+    # Delete old file if exists
+    old_file = video.get("file_path")
+    if old_file and os.path.exists(old_file):
+        try:
+            os.remove(old_file)
+            for ext in [".webp", ".jpg", ".jpeg", ".png"]:
+                thumb = old_file.rsplit(".", 1)[0] + ext
+                if os.path.exists(thumb):
+                    os.remove(thumb)
+        except Exception:
+            pass
+
+    # Set status to pending
+    await db.update_video_status(bvid, "pending")
+
+    source = video.get("source", "manual")
+    async def run_dl():
+        try:
+            await download_video(bvid, config, db, source=source)
+            log.info(f"Redownload completed: {bvid}")
+        except Exception as e:
+            log.error(f"Redownload failed for {bvid}: {e}")
+
+    background_tasks.add_task(run_dl)
+    return {"success": True, "message": "已加入重新下载队列"}
+
 @router.get("/uploaders")
 async def get_uploaders(request: Request):
     db = request.app.state.db

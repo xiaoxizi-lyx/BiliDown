@@ -223,6 +223,7 @@ async function loadVideos(page) {
                     </div>
                     <div class="card-actions">
                         ${video.status === 'done' ? `<button class="btn btn-sm btn-primary" onclick="window.open('${API_BASE}/download/${video.bvid}', '_blank')">⬇ 下载文件</button>` : ''}
+                        <button class="btn btn-sm btn-secondary" onclick="redownloadVideo('${video.bvid}')" title="重新下载此视频 (4K HEVC/H.264)">🔄 重下</button>
                         <button class="btn btn-sm btn-danger" onclick="deleteVideo('${video.bvid}')">🗑 删除</button>
                     </div>
                 </div>
@@ -242,11 +243,41 @@ function playVideo(bvid) {
     // Replace content with video player
     thumbContainer.onclick = null;
     thumbContainer.innerHTML = `
-        <video class="inline-player" controls autoplay>
-            <source src="${API_BASE}/stream/${bvid}" type="video/mp4">
+        <video class="inline-player" controls autoplay playsinline>
+            <source src="${API_BASE}/stream/${bvid}" type="video/mp4" onerror="handleVideoPlayError(this.parentElement, '${bvid}')">
             浏览器不支持视频播放。
         </video>
     `;
+    const video = thumbContainer.querySelector('video');
+    if (video) {
+        video.onerror = () => handleVideoPlayError(thumbContainer, bvid);
+    }
+}
+
+function handleVideoPlayError(container, bvid) {
+    if (!container) return;
+    container.innerHTML = `
+        <div style="background: rgba(15,23,42,0.95); color: #f87171; padding: 1rem; border-radius: 8px; font-size: 0.85rem; text-align: left; line-height: 1.5; border: 1px solid rgba(239,68,68,0.3);">
+            <div style="font-weight: bold; margin-bottom: 0.4rem; font-size: 0.95rem; color: #ef4444;">⚠️ 播放失败：当前设备无法解码该视频</div>
+            <div style="color: #cbd5e1; margin-bottom: 0.6rem; font-size: 0.8rem;">常见原因：该视频可能由旧版下载为 AV1 编码（Safari / QuickTime 不支持 AV1 MP4）。</div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button class="btn btn-sm btn-primary" onclick="redownloadVideo('${bvid}')">🔄 重新下载 (兼容4K HEVC)</button>
+                <button class="btn btn-sm btn-secondary" onclick="window.open('${API_BASE}/download/${bvid}', '_blank')">⬇ 下载原文件</button>
+            </div>
+        </div>
+    `;
+}
+
+async function redownloadVideo(bvid) {
+    if (!confirm('重新下载将删除旧文件，并从 B 站下载兼容全平台播放的 4K HEVC/H.264 版本，是否继续？')) return;
+    try {
+        await api(`/videos/${bvid}/redownload`, { method: 'POST' });
+        showToast('已加入重新下载队列，正在后台下载...', 'success');
+        loadVideos(currentVideoPage);
+        loadStatus();
+    } catch (e) {
+        showToast('重新下载失败: ' + e.message, 'error');
+    }
 }
 
 async function deleteVideo(bvid) {
