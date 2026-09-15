@@ -103,8 +103,43 @@ async def get_thumbnail(request: Request, bvid: str):
             if os.path.exists(thumb_path):
                 return FileResponse(thumb_path)
                 
-    # Fallback to redirecting to bilibili URL
+    # Fallback to fetching remote thumbnail with Bilibili Referer
     if video.get("thumbnail_url"):
-        return RedirectResponse(url=video["thumbnail_url"])
+        return await proxy_image(video["thumbnail_url"])
         
     raise HTTPException(status_code=404, detail="Thumbnail not found")
+
+@router.get("/proxy/image")
+async def proxy_image(url: str):
+    import httpx
+    if not url:
+        raise HTTPException(status_code=400, detail="Missing url parameter")
+        
+    # Upgrade to https if needed
+    if url.startswith("//"):
+        url = "https:" + url
+    elif url.startswith("http://"):
+        url = url.replace("http://", "https://", 1)
+        
+    # Allow only bilibili/hdslb domains for security
+    allowed_domains = ["hdslb.com", "bilibili.com"]
+    if not any(domain in url for domain in allowed_domains):
+        raise HTTPException(status_code=403, detail="Domain not allowed")
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Referer": "https://www.bilibili.com"
+    }
+    async with httpx.AsyncClient(headers=headers, timeout=10.0) as client:
+        try:
+            resp = await client.get(url)
+            if resp.status_code != 200:
+                raise HTTPException(status_code=resp.status_code, detail="Failed to fetch image")
+            content_type = resp.headers.get("content-type", "image/jpeg")
+            return Response(
+                content=resp.content,
+                media_type=content_type,
+                headers={"Cache-Control": "public, max-age=86400"}
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))

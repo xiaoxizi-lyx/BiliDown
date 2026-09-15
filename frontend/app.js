@@ -78,6 +78,18 @@ function formatDate(ts) {
     });
 }
 
+function formatImageUrl(url) {
+    if (!url) return '';
+    if (url.startsWith('//')) return 'https:' + url;
+    if (url.startsWith('http://')) return url.replace('http://', 'https://');
+    return url;
+}
+
+function getImageProxyUrl(url) {
+    if (!url) return '';
+    return `${API_BASE}/proxy/image?url=${encodeURIComponent(formatImageUrl(url))}`;
+}
+
 /* ==========================================================================
    APP STATE & LOGIC
    ========================================================================== */
@@ -193,7 +205,7 @@ async function loadVideos(page) {
 
             card.innerHTML = `
                 <div class="card-thumb" id="thumb-${video.bvid}" onclick="playVideo('${video.bvid}')">
-                    <img src="${API_BASE}/thumbnail/${video.bvid}" alt="Cover" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 16 9\\' fill=\\'%23334155\\'%3E%3Crect width=\\'16\\' height=\\'9\\'/%3E%3C/svg%3E'">
+                    <img src="${API_BASE}/thumbnail/${video.bvid}" referrerpolicy="no-referrer" alt="Cover" onerror="this.onerror=null; this.src='${getImageProxyUrl(video.thumbnail_url)}'">
                     <div class="card-duration">${formatDuration(video.duration)}</div>
                 </div>
                 <div class="card-body">
@@ -261,7 +273,7 @@ async function loadUploaders() {
             const avatarUrl = up.face_url || fallbackAvatar;
 
             item.innerHTML = `
-                <img src="${avatarUrl}" class="avatar" alt="Avatar">
+                <img src="${formatImageUrl(avatarUrl)}" referrerpolicy="no-referrer" class="avatar" alt="Avatar" onerror="this.onerror=null; this.src='${getImageProxyUrl(avatarUrl)}'">
                 <div class="list-info">
                     <div style="font-weight: bold; font-size: 1.1rem;">${up.name || '未知UP主'} (UID: ${up.mid})</div>
                     <div style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.25rem;">
@@ -373,7 +385,7 @@ async function queryExplore(mid, page) {
         if (res.uploader) {
             profileContainer.innerHTML = `
                 <div class="up-profile">
-                    <img src="${res.uploader.face_url}" class="avatar" style="width:80px; height:80px;">
+                    <img src="${formatImageUrl(res.uploader.face_url)}" referrerpolicy="no-referrer" class="avatar" style="width:80px; height:80px;" onerror="this.onerror=null; this.src='${getImageProxyUrl(res.uploader.face_url)}'">
                     <div>
                         <h2 style="margin-bottom: 0.5rem;">${res.uploader.name}</h2>
                         <div style="color: var(--text-muted)">UID: ${mid}</div>
@@ -414,7 +426,7 @@ async function queryExplore(mid, page) {
             
             card.innerHTML = `
                 <div class="card-thumb">
-                    <img src="${video.pic}" alt="Cover">
+                    <img src="${formatImageUrl(video.pic)}" referrerpolicy="no-referrer" alt="Cover" onerror="this.onerror=null; this.src='${getImageProxyUrl(video.pic)}'">
                     <div class="card-duration">${video.length || formatDuration(video.duration)}</div>
                 </div>
                 <div class="card-body">
