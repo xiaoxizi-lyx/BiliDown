@@ -62,9 +62,16 @@ async def download_video(bvid: str, config, db, source: str = "auto", progress_c
     try:
         log.info(f"Extracting info for {bvid}")
         info = await extract_video_info(url, config.cookies_file)
-        estimated_size = (info.get("filesize_approx") or 500) * 1024 * 1024
         
-        log.info(f"Ensuring disk space for {bvid}, estimated {estimated_size} bytes")
+        # yt-dlp filesize and filesize_approx are already in bytes
+        raw_size = info.get("filesize") or info.get("filesize_approx")
+        if raw_size and raw_size > 0:
+            estimated_size = int(raw_size)
+        else:
+            # Fallback default: 300MB
+            estimated_size = 300 * 1024 * 1024
+            
+        log.info(f"Ensuring disk space for {bvid}, estimated {estimated_size / (1024 * 1024):.1f} MB ({estimated_size} bytes)")
         await ensure_disk_space(estimated_size, config.download_dir, db, config.disk_reserve_mb)
         
         await db.update_video_status(bvid, "downloading")

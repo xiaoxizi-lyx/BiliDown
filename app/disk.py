@@ -30,7 +30,14 @@ async def ensure_disk_space(needed_bytes: int, video_dir: str, db, reserve_mb: i
         # Find oldest done video
         oldest = await db.get_oldest_done_video()
         if not oldest:
-            raise DiskFullError("Insufficient disk space and no old videos to clean.")
+            log.warning(
+                f"Low disk space: free {usage.free / (1024*1024):.1f}MB, "
+                f"needed {needed_bytes / (1024*1024):.1f}MB + reserve {reserve_mb}MB"
+            )
+            raise DiskFullError(
+                f"磁盘空间不足: 剩余可用 {usage.free / (1024*1024):.1f}MB，"
+                f"预估需 {needed_bytes / (1024*1024):.1f}MB + 阈值保留 {reserve_mb}MB，且无历史视频可淘汰"
+            )
         
         path = Path(oldest["file_path"])
         if path.exists():
