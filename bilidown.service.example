@@ -1,0 +1,20 @@
+[Unit]
+Description=BiliDown - Bilibili Auto Downloader & Streaming Service
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/BiliDown
+ExecStart=/root/BiliDown/venv/bin/python3 -m app.main
+Restart=always
+RestartSec=5
+KillMode=process
+Environment=PYTHONUNBUFFERED=1
+
+# Optional file descriptor limits
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
