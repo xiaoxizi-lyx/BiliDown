@@ -88,17 +88,17 @@ async def add_uploader(request: Request, data: UploaderAddRequest):
     config = request.app.state.config
     info = await get_uploader_info(data.mid, cookies_file=config.cookies_file)
     
-    if not info.get("name") or info.get("name").startswith("Unknown"):
-        raise HTTPException(status_code=400, detail="无效的UP主UID")
+    name = info.get("name") if info and info.get("name") and not info.get("name").startswith("Unknown") else f"UP主_{data.mid}"
+    face_url = info.get("face_url", "") if info else ""
         
     await db.add_uploader(
         mid=data.mid,
-        name=info["name"],
-        face_url=info["face_url"],
+        name=name,
+        face_url=face_url,
         is_tracked=True,
         tracked_since=datetime.now()
     )
-    return {"success": True, "name": info["name"]}
+    return {"success": True, "name": name}
 
 @router.delete("/uploaders/{mid}")
 async def remove_uploader(request: Request, mid: int):
