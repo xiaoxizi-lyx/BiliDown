@@ -177,3 +177,43 @@ async def get_uploader_info(mid: int, cookies_file: str = "cookies.txt") -> Dict
             "name": f"UP主_{mid}",
             "face_url": ""
         }
+
+async def fetch_video_info(bvid: str, cookies_file: str = "cookies.txt") -> Dict[str, Any]:
+    """Fetch video metadata and uploader info by BV id."""
+    bvid = bvid.strip()
+    if "video/" in bvid:
+        bvid = bvid.split("video/")[1].split("/")[0].split("?")[0]
+    elif not bvid.startswith("BV") and not bvid.startswith("bv"):
+        bvid = "BV" + bvid
+
+    async with get_bili_client(cookies_file) as client:
+        resp = await client.get(
+            "https://api.bilibili.com/x/web-interface/view",
+            params={"bvid": bvid},
+            headers={
+                "Referer": f"https://www.bilibili.com/video/{bvid}",
+                "Origin": "https://www.bilibili.com"
+            }
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("code") != 0 or "data" not in data:
+            raise RuntimeError(f"B站视频解析失败: {data.get('message', '视频不存在或已被删除')} (code: {data.get('code')})")
+
+        vdata = data["data"]
+        owner = vdata.get("owner", {})
+        return {
+            "bvid": vdata.get("bvid", bvid),
+            "aid": vdata.get("aid"),
+            "title": vdata.get("title", ""),
+            "pic": vdata.get("pic", ""),
+            "duration": vdata.get("duration", 0),
+            "upload_time": vdata.get("pubdate") or vdata.get("ctime", 0),
+            "description": vdata.get("desc", ""),
+            "stat": vdata.get("stat", {}),
+            "uploader": {
+                "mid": owner.get("mid"),
+                "name": owner.get("name", ""),
+                "face_url": owner.get("face", "")
+            }
+        }

@@ -97,6 +97,9 @@ class Database:
     async def update_last_check(self, mid: int):
         await self._execute("UPDATE uploaders SET last_check = ? WHERE mid = ?", (datetime.now(), mid))
 
+    async def get_uploader(self, mid: int) -> Optional[Dict[str, Any]]:
+        return await self._fetch_one("SELECT * FROM uploaders WHERE mid = ?", (mid,))
+
     async def video_exists(self, bvid: str) -> bool:
         row = await self._fetch_one("SELECT 1 FROM videos WHERE bvid = ?", (bvid,))
         return row is not None

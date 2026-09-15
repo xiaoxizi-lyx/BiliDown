@@ -4,31 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="referrer" content="no-referrer">
-    <title>BiliDown - 浏览视频</title>
+    <title>BiliDown - 视频检索与UP主点播</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body id="explore-page">
     <header>
         <div class="header-title">
-            <a id="back-home-link" href="index.html" style="color: inherit; text-decoration: none;">&larr; 返回主页</a>
+            <a id="back-home-link" href="index.html" style="color: inherit; text-decoration: none;">&larr; 返回视频库</a>
         </div>
     </header>
 
     <main>
-        <div class="control-bar">
-            <div class="input-group">
-                <input type="text" id="explore-uid" placeholder="输入UP主的UID查询...">
-                <button class="btn btn-primary" id="btn-explore-query">查询</button>
+        <div class="control-bar" style="flex-direction: column; align-items: stretch; gap: 0.75rem;">
+            <div class="input-group" style="width: 100%;">
+                <input type="text" id="explore-input" placeholder="输入 视频BV号 (如 BV1itgV6oE7x) 或 UP主UID (如 13574291)...">
+                <button class="btn btn-primary" id="btn-explore-query">🔍 查询</button>
+            </div>
+            <div style="font-size: 0.875rem; color: var(--text-muted); display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+                <span>💡 提示：支持直接粘贴视频BV号、视频链接或UP主UID</span>
+                <span>快捷测试: 
+                    <a href="javascript:void(0)" onclick="quickFill('BV1itgV6oE7x')">BV1itgV6oE7x (测试视频)</a> · 
+                    <a href="javascript:void(0)" onclick="quickFill('13574291')">13574291 (阿抽崽)</a>
+                </span>
             </div>
         </div>
 
-        <div id="up-profile-container">
-            <!-- Profile injected here -->
-        </div>
+        <!-- BV 号搜索结果卡片展示区 -->
+        <div id="bv-result-container" style="display: none; margin-bottom: 2rem;"></div>
 
-        <div id="explore-video-grid" class="video-grid">
-            <!-- Videos injected here -->
-        </div>
+        <!-- UP 主个人信息卡片展示区 -->
+        <div id="up-profile-container"></div>
+
+        <!-- UP 主投稿视频列表网格 -->
+        <div id="explore-video-grid" class="video-grid"></div>
         
         <div class="pagination" id="explore-pagination" style="display: none;">
             <button class="btn btn-secondary" id="btn-explore-prev">上一页</button>

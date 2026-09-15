@@ -4,7 +4,7 @@ from typing import Optional
 from datetime import datetime
 import asyncio
 import logging
-from app.wbi import get_uploader_info, fetch_creator_videos
+from app.wbi import get_uploader_info, fetch_creator_videos, fetch_video_info
 from app.downloader import download_video
 
 log = logging.getLogger("bilidown.api")
@@ -21,6 +21,18 @@ class DownloadRequest(BaseModel):
     duration: int
     upload_time: int
     description: Optional[str] = ""
+
+class BiliActionRequest(BaseModel):
+    action: str  # "download_only" | "track_only" | "download_and_track"
+    bvid: Optional[str] = None
+    mid: int
+    title: Optional[str] = ""
+    thumbnail_url: Optional[str] = ""
+    duration: Optional[int] = 0
+    upload_time: Optional[int] = 0
+    description: Optional[str] = ""
+    uploader_name: Optional[str] = None
+    uploader_face: Optional[str] = None
 
 @router.get("/videos")
 async def get_videos(
@@ -106,6 +118,116 @@ async def remove_uploader(request: Request, mid: int):
     await db.remove_tracker(mid)
     return {"success": True}
 
+@router.post("/uploaders/toggle")
+async def toggle_uploader(request: Request, data: UploaderAddRequest):
+    db = request.app.state.db
+    config = request.app.state.config
+    up = await db.get_uploader(data.mid)
+    if up and up.get("is_tracked"):
+        await db.remove_tracker(data.mid)
+        return {"success": True, "is_tracked": False, "message": "已取消追踪"}
+    else:
+        info = await get_uploader_info(data.mid, cookies_file=config.cookies_file)
+        name = info.get("name") if info and info.get("name") and not info.get("name").startswith("Unknown") else f"UP主_{data.mid}"
+        face_url = info.get("face_url", "") if info else ""
+        await db.add_uploader(
+            mid=data.mid,
+            name=name,
+            face_url=face_url,
+            is_tracked=True,
+            tracked_since=datetime.now()
+        )
+        return {"success": True, "is_tracked": True, "message": f"已开启对【{name}】的追更"}
+
+@router.get("/bili/video/{bvid}")
+async def get_bili_video(request: Request, bvid: str):
+    db = request.app.state.db
+    config = request.app.state.config
+    try:
+        vinfo = await fetch_video_info(bvid, cookies_file=config.cookies_file)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    is_downloaded = await db.video_exists(vinfo["bvid"])
+    video_record = await db.get_video(vinfo["bvid"]) if is_downloaded else None
+    
+    mid = vinfo["uploader"]["mid"]
+    uploader_record = await db.get_uploader(mid) if mid else None
+    is_tracked = bool(uploader_record and uploader_record.get("is_tracked"))
+
+    return {
+        "video": vinfo,
+        "is_downloaded": is_downloaded,
+        "video_status": video_record.get("status") if video_record else None,
+        "is_tracked": is_tracked
+    }
+
+@router.post("/bili/action")
+async def handle_bili_action(request: Request, data: BiliActionRequest, background_tasks: BackgroundTasks):
+    db = request.app.state.db
+    config = request.app.state.config
+    
+    up_name = data.uploader_name or f"UP主_{data.mid}"
+    up_face = data.uploader_face or ""
+    
+    # 1. Handle tracking actions
+    if data.action in ("track_only", "download_and_track"):
+        await db.add_uploader(
+            mid=data.mid,
+            name=up_name,
+            face_url=up_face,
+            is_tracked=True,
+            tracked_since=datetime.now()
+        )
+    elif data.action == "download_only":
+        existing_up = await db.get_uploader(data.mid)
+        if not existing_up:
+            await db.add_uploader(
+                mid=data.mid,
+                name=up_name,
+                face_url=up_face,
+                is_tracked=False,
+                tracked_since=None
+            )
+
+    # 2. Handle downloading actions
+    if data.action in ("download_only", "download_and_track"):
+        if not data.bvid:
+            raise HTTPException(status_code=400, detail="缺少BV号")
+
+        if await db.video_exists(data.bvid):
+            video_rec = await db.get_video(data.bvid)
+            if video_rec and video_rec.get("status") in ("done", "downloading"):
+                return {"success": True, "message": "该视频已经在下载库中"}
+
+        video_data = {
+            "bvid": data.bvid,
+            "aid": 0,
+            "mid": data.mid,
+            "title": data.title or data.bvid,
+            "description": data.description or "",
+            "length": data.duration or 0,
+            "pic": data.thumbnail_url or "",
+            "created": data.upload_time or int(datetime.now().timestamp())
+        }
+        await db.insert_video(video_data, source="manual", status="pending")
+
+        async def run_dl():
+            try:
+                await download_video(data.bvid, config, db, source="manual")
+                log.info(f"Manual download completed: {data.bvid}")
+            except Exception as e:
+                log.error(f"Manual download failed for {data.bvid}: {e}")
+
+        background_tasks.add_task(run_dl)
+
+    msg_map = {
+        "download_only": "已加入下载队列（仅下载当前视频，未追踪该UP主）",
+        "track_only": f"已成功开启对【{up_name}】的自动追更（未下载当前视频）",
+        "download_and_track": f"已加入下载队列，并开启对【{up_name}】的自动追更！"
+    }
+    return {"success": True, "message": msg_map.get(data.action, "操作成功")}
+
 @router.get("/explore/{mid}")
 async def explore_uploader(request: Request, mid: int, pn: int = 1, ps: int = 20):
     db = request.app.state.db
@@ -122,11 +244,16 @@ async def explore_uploader(request: Request, mid: int, pn: int = 1, ps: int = 20
     for v in vlist:
         v["downloaded"] = await db.video_exists(v.get("bvid", ""))
     
-    # Frontend expects: {videos, page, uploader}
+    # Check if uploader is currently tracked
+    up_record = await db.get_uploader(mid)
+    is_tracked = bool(up_record and up_record.get("is_tracked"))
+
+    # Frontend expects: {videos, page, uploader, is_tracked}
     return {
         "videos": vlist,
         "page": page_info,
         "uploader": info,
+        "is_tracked": is_tracked
     }
 
 @router.post("/explore/download")
